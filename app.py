@@ -1,4 +1,5 @@
 import json
+import os
 import joblib
 import numpy as np
 import torch
@@ -8,27 +9,24 @@ from pydantic import BaseModel
 
 app = FastAPI(title="Bike Demand Prediction Service", version="1.0")
 
-with open("artifacts/feature_cols.json", "r") as f:
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+ARTIFACTS_DIR = os.path.join(BASE_DIR, "artifacts")
+
+with open(os.path.join(ARTIFACTS_DIR, "feature_cols.json"), "r") as f:
     FEATURE_COLS = json.load(f)
 
-scaler = joblib.load("artifacts/scaler.pkl")
+scaler = joblib.load(os.path.join(ARTIFACTS_DIR, "scaler.pkl"))
 
-class BikeMLP(nn.Module):
-    def __init__(self, input_dim: int):
-        super().__init__()
-        self.net = nn.Sequential(
-            nn.Linear(input_dim, 64),
-            nn.ReLU(),
-            nn.Linear(64, 32),
-            nn.ReLU(),
-            nn.Linear(32, 1),
-        )
+# Model matches the training architecture (plain Sequential)
+model = nn.Sequential(
+    nn.Linear(len(FEATURE_COLS), 64),
+    nn.ReLU(),
+    nn.Linear(64, 32),
+    nn.ReLU(),
+    nn.Linear(32, 1)
+)
 
-    def forward(self, x):
-        return self.net(x)
-
-model = BikeMLP(input_dim=len(FEATURE_COLS))
-state = torch.load("artifacts/bike_mlp.pt", map_location="cpu")
+state = torch.load(os.path.join(ARTIFACTS_DIR, "bike_mlp.pt"), map_location="cpu")
 model.load_state_dict(state)
 model.eval()
 
